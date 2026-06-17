@@ -105,7 +105,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Check Printer Production Tree")
         loadUi(resource_path("src/ui/cheque_writer.ui", "src/ui/cheque_writer.ui"), self)
-        image_path = resource_path("src/ui/check", "src/ui/check")
+        image_path = resource_path("src/ui/check.jpeg", "src/ui/check.jpeg")
         # 2. Inject the dynamic path straight into the frame's stylesheet
 
         self.chequeFrame.setStyleSheet(f"""
