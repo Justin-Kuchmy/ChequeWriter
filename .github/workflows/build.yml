@@ -32,6 +32,7 @@ jobs:
           pyinstaller --noconfirm --onefile --windowed `
             --name "ChequePrinter" `
             --add-data "src/ui/cheque_writer.ui;src/ui" `
+            --add-data "src/ui/check;src/ui" `
             main.py
 
       - name: Create Release

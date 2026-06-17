@@ -53,7 +53,7 @@
     max-height: 336px;
 
     /* Step 2: Use border-image to automatically handle the 600 DPI scaling */
-    border-image: url(&quot;/home/justin_pc/Documents/SharedFolder/cheque_printer/src/ui/check&quot;)
+    border-image: url(&quot;IMAGE_PATH&quot;) 0 0 0 0 stretch stretch;
 }</string>
     </property>
     <widget class="QDateEdit" name="dateEdit">
