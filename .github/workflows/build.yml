@@ -30,8 +30,9 @@ jobs:
             --add-data "src/ui/cheque_writer.ui;src/ui" `
             main.py
 
-      - name: Upload EXE artifact
-        uses: actions/upload-artifact@v4
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: ChequePrinter-windows
-          path: dist/ChequePrinter.exe
+          tag_name: v1.0.${{ github.run_number }}
+          name: ChequePrinter v1.0.${{ github.run_number }}
+          files: dist/ChequePrinter.exe
