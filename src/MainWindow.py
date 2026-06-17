@@ -9,12 +9,13 @@ import os
 from PyQt6.QtWidgets import QApplication, QMainWindow
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.uic import loadUi
-from PyQt6.QtGui import QKeySequence, QShortcut  # QShortcut is here in Qt6
+from PyQt6.QtGui import QKeySequence, QShortcut 
 from num2words import num2words
 from pypdf import PdfReader, PdfWriter
 
+
 from reportlab.pdfgen import canvas
-from reportlab.lib.units import mm
+from reportlab.lib.units import mm, inch
 from reportlab.lib import colors        
 
 
@@ -47,7 +48,7 @@ def rotate_pdf(filename: str):
     with open(filename, 'wb') as f:
         writer.write(f)
 
-def create_cheque_pdf(filename="cheque.pdf",date="01/01/2026",payee="Juan Dela Cruz",amount="10,000.00",amount_words="TEN THOUSAND PESOS ONLY"):
+def create_cheque_pdf(filename,date, payee,amount,amount_words):
     c = canvas.Canvas(filename)
 
     width  = 215.9 * mm
@@ -56,21 +57,39 @@ def create_cheque_pdf(filename="cheque.pdf",date="01/01/2026",payee="Juan Dela C
 
     def y(mm_from_top):
         return height - (mm_from_top * mm)
+    
+    def y_inches(inches_from_top):
+        return height - (inches_from_top * inch)
+    
+    def mark(x, y_pos):
+        c.line(x - 10, y_pos, x + 10, y_pos)
+        c.line(x, y_pos - 10, x, y_pos + 10)
 
-    # Date
-    c.drawString(145 * mm, y(10), date)
+    c.setStrokeColor(colors.red)
+    # mark(5.82 * inch, y_inches(0.60))
+    # mark(0.55 * inch, y_inches(0.93))
+    # mark(5.82 * inch, y_inches(0.93))
+    # mark(0.55 * inch, y_inches(1.25))
 
-    # Payee
-    c.drawString(80 * mm, y(27), payee)
+    c.setFont("Helvetica", 10) 
 
-    # Amount in figures
-    c.drawString(165 * mm, y(27), f"{amount}")
+    # Bounding box
+    c.setStrokeColor(colors.black)
+    c.rect(0, 0, width, height, fill=0, stroke=1)
 
-    # Amount in words
-    c.drawString(22 * mm, y(42), f"{amount_words}")
+    # Date 
+    date_digits = date.replace("/", "")
+    date_formatted = " ".join(date_digits)
+    print(date)
+    print(date_digits)
+    print(date_formatted)
+    c.drawString(5.82 * inch, y_inches(0.60), date_formatted)
+    c.drawString(0.55 * inch, y_inches(0.93), payee.upper())
+    c.drawString(5.82 * inch, y_inches(0.93), amount)
+    c.drawString(0.55 * inch, y_inches(1.25), amount_words)
 
     c.save()
-    rotate_pdf(filename)
+    #rotate_pdf(filename)
     print_cheque(filename)
 
 
@@ -114,7 +133,8 @@ class MainWindow(QMainWindow):
 
         for widget, value in fields:
             if hasattr(widget, 'setDate'):
-                widget.setDate(QDate.fromString(value, "MM/dd/yyyy"))
+                val = QDate.fromString(value, "MM/dd/yyyy")
+                widget.setDate(val)
             elif hasattr(widget, 'setText'):
                 widget.setText(value)
 
