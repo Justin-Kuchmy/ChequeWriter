@@ -89,7 +89,7 @@ def create_cheque_pdf(filename,date, payee,amount,amount_words):
     c.drawString(0.55 * inch, y_inches(1.25), amount_words)
 
     c.save()
-    #rotate_pdf(filename)
+    rotate_pdf(filename)
     print_cheque(filename)
 
 
