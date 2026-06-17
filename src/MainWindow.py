@@ -48,48 +48,37 @@ def rotate_pdf(filename: str):
     with open(filename, 'wb') as f:
         writer.write(f)
 
-def create_cheque_pdf(filename,date, payee,amount,amount_words):
-    c = canvas.Canvas(filename)
-
+def create_cheque_pdf(filename, date, payee, amount, amount_words):
     width  = 215.9 * mm
     height = 88.9  * mm
     c = canvas.Canvas(filename, pagesize=(width, height))
 
     def y(mm_from_top):
         return height - (mm_from_top * mm)
-    
-    def y_inches(inches_from_top):
-        return height - (inches_from_top * inch)
-    
-    def mark(x, y_pos):
-        c.line(x - 10, y_pos, x + 10, y_pos)
-        c.line(x, y_pos - 10, x, y_pos + 10)
-
-    c.setStrokeColor(colors.red)
-    # mark(5.82 * inch, y_inches(0.60))
-    # mark(0.55 * inch, y_inches(0.93))
-    # mark(5.82 * inch, y_inches(0.93))
-    # mark(0.55 * inch, y_inches(1.25))
 
     c.setFont("Helvetica", 10) 
 
-    # Bounding box
+    # Bounding box (Optional: remove or comment out stroke=1 when printing on real checks)
     c.setStrokeColor(colors.black)
     c.rect(0, 0, width, height, fill=0, stroke=1)
 
-    # Date 
+    # 1. Date (UI X: 610, Y: 40) -> 161.4mm from left, 10.6mm from top
     date_digits = date.replace("/", "")
     date_formatted = " ".join(date_digits)
-    print(date)
-    print(date_digits)
-    print(date_formatted)
-    c.drawString(5.82 * inch, y_inches(0.60), date_formatted)
-    c.drawString(0.55 * inch, y_inches(0.93), payee.upper())
-    c.drawString(5.82 * inch, y_inches(0.93), amount)
-    c.drawString(0.55 * inch, y_inches(1.25), amount_words)
+    c.drawString(161.4 * mm, y(10.6), date_formatted)
+
+    # 2. Payee Name (UI X: 110, Y: 90) -> 29.1mm from left, 23.8mm from top
+    c.drawString(29.1 * mm, y(23.8), payee.upper())
+
+    # 3. Numeric Amount (UI X: 610, Y: 80) -> 161.4mm from left, 21.2mm from top
+    # Added a leading peso sign descriptor structure to match your layout's ₱ indicator
+    c.drawString(161.4 * mm, y(21.2), f"{amount}")
+
+    # 4. Amount Words (UI X: 80, Y: 120) -> 21.2mm from left, 31.8mm from top
+    c.drawString(21.2 * mm, y(31.8), amount_words)
 
     c.save()
-    rotate_pdf(filename)
+    #rotate_pdf(filename)
     print_cheque(filename)
 
 
@@ -105,11 +94,30 @@ def amount_to_words(amount: str) -> str:
         return f"{words} & {centavos}/100 ONLY"
     return f"{words}  ONLY"
 
+
+
+
+
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Check Printer Production Tree")
         loadUi(resource_path("src/ui/cheque_writer.ui", "src/ui/cheque_writer.ui"), self)
+        image_path = resource_path("src/ui/check", "src/ui/check")
+        # 2. Inject the dynamic path straight into the frame's stylesheet
+
+        self.chequeFrame.setStyleSheet(f"""
+            #chequeFrame {{
+                min-width: 816px;
+                max-width: 816px;
+                min-height: 336px;
+                max-height: 336px;
+                border-image: url("{image_path}") 0 0 0 0 stretch stretch;
+            }}
+        """)
+
         self.clearButton.clicked.connect(self.clear_fields)
         self.generatePDFButton.clicked.connect(self.print_cheque_info)
         self.pasteShortcut = QShortcut(QKeySequence("Ctrl+Shift+V"), self)
@@ -120,17 +128,28 @@ class MainWindow(QMainWindow):
         clipboard = QApplication.clipboard().text()
         cols = clipboard.strip().split('\t')
         
-        if len(cols) < 4:
+        if len(cols) < 3:
             print("Not enough columns in clipboard")
             return
 
-        fields = [
-            (self.dateEdit,      cols[0].strip()),
-            (self.payeeName,     cols[1].strip()),
-            (self.paidAmount,    cols[2].strip()),
-            (self.amountWords,   cols[3].strip()),
-        ]
+        raw_date = cols[0].strip()
+        raw_payee = cols[1].strip().upper()
+        raw_amount = cols[2].strip()
 
+        try:
+            calculated_words = amount_to_words(raw_amount)
+        except ValueError:
+            calculated_words = "INVALID AMOUNT"
+            print(f"Could not convert '{raw_amount}' to words.")
+
+        # Map the values to your UI fields
+        fields = [
+            (self.dateEdit,      raw_date),
+            (self.payeeName,     raw_payee),
+            (self.paidAmount,    raw_amount),
+            (self.amountWords,   calculated_words), # Fills the word box right on paste
+        ]
+        
         for widget, value in fields:
             if hasattr(widget, 'setDate'):
                 val = QDate.fromString(value, "MM/dd/yyyy")
