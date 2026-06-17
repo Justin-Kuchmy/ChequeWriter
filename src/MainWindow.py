@@ -103,10 +103,11 @@ def amount_to_words(amount: str) -> str:
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Check Printer Production Tree")
+        self.setWindowTitle("Check Writer")
         loadUi(resource_path("src/ui/cheque_writer.ui", "src/ui/cheque_writer.ui"), self)
-        image_path = resource_path("src/ui/check.jpeg", "src/ui/check.jpeg")
-        # 2. Inject the dynamic path straight into the frame's stylesheet
+        native_bundle_path = os.path.join("src", "ui", "check.jpeg")
+        image_path = resource_path("src/ui/check.jpeg", native_bundle_path)
+        clean_qt_path = image_path.replace('\\', '/')
 
         self.chequeFrame.setStyleSheet(f"""
             #chequeFrame {{
@@ -114,7 +115,7 @@ class MainWindow(QMainWindow):
                 max-width: 816px;
                 min-height: 336px;
                 max-height: 336px;
-                border-image: url("{image_path}") 0 0 0 0 stretch stretch;
+                border-image: url("{clean_qt_path}") 0 0 0 0 stretch stretch;
             }}
         """)
 
