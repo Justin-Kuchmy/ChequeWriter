@@ -6,12 +6,15 @@ import subprocess
 import sys
 import os
 
-from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtWidgets import QApplication, QMainWindow, QHeaderView, QTableWidgetItem
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.uic import loadUi
 from PyQt6.QtGui import QKeySequence, QShortcut 
 from num2words import num2words
 from pypdf import PdfReader, PdfWriter
+from pdf2image import convert_from_path
+from PIL import Image
+import matplotlib.pyplot as plt
 
 
 from reportlab.pdfgen import canvas
@@ -35,7 +38,20 @@ def resource_path(relative_path_dev, relative_path_bundle):
         return os.path.join(sys._MEIPASS, relative_path_bundle)
     return os.path.abspath(relative_path_dev)
 
+def overlay_pdf_on_cheque_image(pdf_path, cheque_image_path, output_path="overlay_check.png"):
+    
+    pdf_pages = convert_from_path(pdf_path, dpi=150)  # lower, since it gets resized anyway
+    pdf_image = pdf_pages[0].convert("RGBA")
 
+    cheque_image = Image.open(cheque_image_path).convert("RGBA")
+
+    pdf_image = pdf_image.resize(cheque_image.size)
+
+    alpha = pdf_image.split()[3].point(lambda p: p * 0.5)
+    pdf_image.putalpha(alpha)
+    
+    combined = Image.alpha_composite(cheque_image, pdf_image)
+    combined.save(output_path)
 
 def rotate_pdf(filename: str):
     reader = PdfReader(filename)
@@ -58,24 +74,24 @@ def create_cheque_pdf(filename, date, payee, amount, amount_words):
 
     c.setFont("Helvetica", 10) 
 
-    # Bounding box (Optional: remove or comment out stroke=1 when printing on real checks)
+    # Bounding box
     c.setStrokeColor(colors.black)
     c.rect(0, 0, width, height, fill=0, stroke=1)
 
-    # 1. Date (UI X: 610, Y: 40) -> 161.4mm from left, 10.6mm from top
     date_digits = date.replace("/", "")
-    date_formatted = " ".join(date_digits)
-    c.drawString(161.4 * mm, y(10.6), date_formatted)
+    date_formatted = "  ".join(date_digits)
+    c.drawString(165 * mm, y(19), date_formatted)
 
-    # 2. Payee Name (UI X: 110, Y: 90) -> 29.1mm from left, 23.8mm from top
-    c.drawString(29.1 * mm, y(23.8), payee.upper())
+    # 2. Payee Name
+    c.drawString(30 * mm, y(27.5), payee.upper())
 
-    # 3. Numeric Amount (UI X: 610, Y: 80) -> 161.4mm from left, 21.2mm from top
-    # Added a leading peso sign descriptor structure to match your layout's ₱ indicator
-    c.drawString(161.4 * mm, y(21.2), f"{amount}")
 
-    # 4. Amount Words (UI X: 80, Y: 120) -> 21.2mm from left, 31.8mm from top
-    c.drawString(21.2 * mm, y(31.8), amount_words)
+    # 3. Amount Words
+    c.drawString(21.2 * mm, y(36.5), amount_words)
+
+    # 4. Numeric Amount 
+    c.drawString(161.4 * mm, y(26.0), f"{amount}")
+    
 
     c.save()
     #rotate_pdf(filename)
@@ -95,10 +111,9 @@ def amount_to_words(amount: str) -> str:
     return f"{words}  ONLY"
 
 
-
-
-
-
+# img = Image.open("overlay_check.png")
+# plt.imshow(img)
+# plt.show()
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -119,60 +134,102 @@ class MainWindow(QMainWindow):
             }}
         """)
 
-        self.clearButton.clicked.connect(self.clear_fields)
+        self.clearCheckButton.clicked.connect(self.clear_check_fields)
+        self.clearTableButton.clicked.connect(self.clear_table_fields)
         self.generatePDFButton.clicked.connect(self.print_cheque_info)
         self.pasteShortcut = QShortcut(QKeySequence("Ctrl+Shift+V"), self)
-        self.pasteShortcut.activated.connect(self.paste_from_clipboard)
+        self.pasteShortcut.activated.connect(self.paste_from_excel)
+        self.excelTableData.horizontalHeader().setStretchLastSection(False)
+        self.excelTableData.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.excelTableData.cellClicked.connect(self.on_row_clicked)
 
+    def on_row_clicked(self, row, column):
+        date_item = self.excelTableData.item(row, 0)
+        payee_item = self.excelTableData.item(row, 1)
+        amount_item = self.excelTableData.item(row, 2)
 
-    def paste_from_clipboard(self):
+        if date_item and payee_item and amount_item:
+            raw_date = date_item.text()
+            raw_payee = payee_item.text().upper()
+            raw_amount = amount_item.text()
+
+            try:
+                calculated_words = amount_to_words(raw_amount)
+            except ValueError:
+                calculated_words = "INVALID AMOUNT"
+                print(f"Could not convert '{raw_amount}' to words.")
+
+            # Map the values to your UI fields
+            fields = [
+                (self.dateEdit,      raw_date),
+                (self.payeeName,     raw_payee),
+                (self.paidAmount,    raw_amount),
+                (self.amountWords,   calculated_words), # Fills the word box right on paste
+            ]
+            
+            for widget, value in fields:
+                if hasattr(widget, 'setDate'):
+                    val = QDate.fromString(value, "MM/dd/yyyy")
+                    widget.setDate(val)
+                elif hasattr(widget, 'setText'):
+                    widget.setText(value)
+
+    def paste_from_excel(self):
         clipboard = QApplication.clipboard().text()
-        cols = clipboard.strip().split('\t')
+        rows = clipboard.strip().split('\n')
         
-        if len(cols) < 3:
-            print("Not enough columns in clipboard")
-            return
+        for row in rows:
+            cols = row.split('\t')
+            if len(cols) < 3:
+                print("Not enough columns in clipboard")
+                continue
 
-        raw_date = cols[0].strip()
-        raw_payee = cols[1].strip().upper()
-        raw_amount = cols[2].strip()
+            raw_date = cols[0].strip()
+            raw_payee = cols[1].strip().upper()
+            raw_amount = cols[2].strip()
+            
+            print(f"Pasting: Date: {raw_date}, Payee: {raw_payee}, Amount: {raw_amount}")
+            newRowCol1 = QTableWidgetItem(raw_date)
+            newRowCol2 = QTableWidgetItem(raw_payee)
+            newRowCol3 = QTableWidgetItem(raw_amount)
 
-        try:
-            calculated_words = amount_to_words(raw_amount)
-        except ValueError:
-            calculated_words = "INVALID AMOUNT"
-            print(f"Could not convert '{raw_amount}' to words.")
+            row_index = self.excelTableData.rowCount()
+            self.excelTableData.insertRow(row_index)
+            self.excelTableData.setItem(row_index, 0, newRowCol1)
+            self.excelTableData.setItem(row_index, 1, newRowCol2)
+            self.excelTableData.setItem(row_index, 2, newRowCol3)
 
-        # Map the values to your UI fields
-        fields = [
-            (self.dateEdit,      raw_date),
-            (self.payeeName,     raw_payee),
-            (self.paidAmount,    raw_amount),
-            (self.amountWords,   calculated_words), # Fills the word box right on paste
-        ]
-        
-        for widget, value in fields:
-            if hasattr(widget, 'setDate'):
-                val = QDate.fromString(value, "MM/dd/yyyy")
-                widget.setDate(val)
-            elif hasattr(widget, 'setText'):
-                widget.setText(value)
-
-    def clear_fields(self):
+    def clear_check_fields(self):
         """Clears text from all the input fields."""
         self.payeeName.clear()
         self.paidAmount.clear()
         self.amountWords.clear()
         print("Fields cleared.")
 
+    def clear_table_fields(self):
+        """Clears all rows from the Excel table."""
+        self.excelTableData.setRowCount(0)
+        print("Table fields cleared.")
+
     def print_cheque_info(self):
         """Retrieves and prints the data currently entered in the fields."""
-        filename="cheque.pdf"
-        payee = self.payeeName.text()
-        amount = self.paidAmount.text()
-        amount_words = amount_to_words(amount)
+        payee = self.payeeName.text().strip()
+        amount = self.paidAmount.text().strip()
+
+        if not payee or not amount:
+                print("Missing payee or amount — nothing to print.")
+                return
+
+        try:
+            amount_words = amount_to_words(amount)
+        except ValueError:
+            print(f"Invalid amount: '{amount}'")
+            return
+
+        filename = "cheque.pdf"
         chequeDate = self.dateEdit.date().toString("MM/dd/yyyy")
 
-        create_cheque_pdf(filename,chequeDate,payee,str(amount),amount_words)
+        create_cheque_pdf(filename, chequeDate, payee, str(amount), amount_words)
+        overlay_pdf_on_cheque_image("cheque.pdf", "src/ui/check.jpeg")
 
 
