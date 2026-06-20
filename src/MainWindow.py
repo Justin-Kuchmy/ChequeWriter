@@ -12,9 +12,6 @@ from PyQt6.uic import loadUi
 from PyQt6.QtGui import QKeySequence, QShortcut 
 from num2words import num2words
 from pypdf import PdfReader, PdfWriter
-from pdf2image import convert_from_path
-from PIL import Image
-import matplotlib.pyplot as plt
 
 
 from reportlab.pdfgen import canvas
@@ -37,21 +34,6 @@ def resource_path(relative_path_dev, relative_path_bundle):
     if hasattr(sys, "_MEIPASS"):
         return os.path.join(sys._MEIPASS, relative_path_bundle)
     return os.path.abspath(relative_path_dev)
-
-def overlay_pdf_on_cheque_image(pdf_path, cheque_image_path, output_path="overlay_check.png"):
-    
-    pdf_pages = convert_from_path(pdf_path, dpi=150)  # lower, since it gets resized anyway
-    pdf_image = pdf_pages[0].convert("RGBA")
-
-    cheque_image = Image.open(cheque_image_path).convert("RGBA")
-
-    pdf_image = pdf_image.resize(cheque_image.size)
-
-    alpha = pdf_image.split()[3].point(lambda p: p * 0.5)
-    pdf_image.putalpha(alpha)
-    
-    combined = Image.alpha_composite(cheque_image, pdf_image)
-    combined.save(output_path)
 
 def rotate_pdf(filename: str):
     reader = PdfReader(filename)
@@ -99,21 +81,20 @@ def create_cheque_pdf(filename, date, payee, amount, amount_words):
 
 
 def amount_to_words(amount: str) -> str:
+    #value = float(amount.replace(',', ''))
     value = float(amount.replace(',', ''))
+    formatted_amount = f"{value:,.2f}"
     
     pesos = int(value)
     centavos = round((value - pesos) * 100)
     
     words = num2words(pesos, lang='en').upper()
+    words = words.replace("AND ", "")  # Remove "AND" if it exists
+    words = words.replace(',', '')  # Remove "AND" if it exists
     
     if centavos > 0:
-        return f"{words} & {centavos}/100 ONLY"
-    return f"{words}  ONLY"
-
-
-# img = Image.open("overlay_check.png")
-# plt.imshow(img)
-# plt.show()
+        return f"{words} AND {centavos}/100 ONLY", formatted_amount
+    return f"{words} ONLY", formatted_amount
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -154,7 +135,8 @@ class MainWindow(QMainWindow):
             raw_amount = amount_item.text()
 
             try:
-                calculated_words = amount_to_words(raw_amount)
+                calculated_words, self.formatted_amount = amount_to_words(raw_amount)
+                raw_amount = self.formatted_amount  # Update raw_amount to the formatted version
             except ValueError:
                 calculated_words = "INVALID AMOUNT"
                 print(f"Could not convert '{raw_amount}' to words.")
@@ -177,6 +159,7 @@ class MainWindow(QMainWindow):
     def paste_from_excel(self):
         clipboard = QApplication.clipboard().text()
         rows = clipboard.strip().split('\n')
+        self.formatted_amount = None
         
         for row in rows:
             cols = row.split('\t')
@@ -221,7 +204,7 @@ class MainWindow(QMainWindow):
                 return
 
         try:
-            amount_words = amount_to_words(amount)
+            amount_words, self.formatted_amount = amount_to_words(amount)
         except ValueError:
             print(f"Invalid amount: '{amount}'")
             return
@@ -229,7 +212,6 @@ class MainWindow(QMainWindow):
         filename = "cheque.pdf"
         chequeDate = self.dateEdit.date().toString("MM/dd/yyyy")
 
-        create_cheque_pdf(filename, chequeDate, payee, str(amount), amount_words)
-        overlay_pdf_on_cheque_image("cheque.pdf", "src/ui/check.jpeg")
+        create_cheque_pdf(filename, chequeDate, payee, str(self.formatted_amount), amount_words)
 
 
