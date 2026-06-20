@@ -32,7 +32,7 @@ jobs:
           pyinstaller --noconfirm --onefile --windowed `
             --name "ChequeWriter" `
             --add-data "src/ui/cheque_writer.ui;src/ui" `
-            --add-data "src/ui/check.jpeg;src/ui" `
+            --add-data "src/ui/check.jpg;src/ui" `
             main.py
 
       - name: Zip the EXE

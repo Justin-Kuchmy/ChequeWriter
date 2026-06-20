@@ -6,7 +6,7 @@ import subprocess
 import sys
 import os
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QHeaderView, QTableWidgetItem
+from PyQt6.QtWidgets import QApplication, QMainWindow, QHeaderView, QTableWidgetItem, QMessageBox
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.uic import loadUi
 from PyQt6.QtGui import QKeySequence, QShortcut 
@@ -60,7 +60,7 @@ def create_cheque_pdf(filename, date, payee, amount, amount_words):
     c.setStrokeColor(colors.black)
     c.rect(0, 0, width, height, fill=0, stroke=1)
 
-    date_digits = date.replace("/", " ")
+    date_digits = date.toString("MM/dd/yyyy").replace("/", " ")
     date_formatted = "   ".join(date_digits)
     c.drawString(160 * mm, y(19), date_formatted)
 
@@ -76,7 +76,7 @@ def create_cheque_pdf(filename, date, payee, amount, amount_words):
     
 
     c.save()
-    #rotate_pdf(filename)
+    rotate_pdf(filename)
     print_cheque(filename)
 
 
@@ -113,6 +113,17 @@ def amount_to_words(amount: str) -> str:
     if centavos > 0:
         return f"{words} AND {centavos}/100 ONLY", formatted_amount
     return f"{words} ONLY", formatted_amount
+
+def parse_flexible_date(date_str: str) -> QDate:
+    date = QDate.fromString(date_str, "MM/dd/yyyy")
+    if not date.isValid():
+        messagebox = QMessageBox()
+        messagebox.setIcon(QMessageBox.Icon.Warning)
+        messagebox.setWindowTitle("Invalid Date Format")
+        messagebox.setText(f"Could not parse date: '{date_str}'. Please use MM/dd/yyyy format.")
+        messagebox.exec()
+        return QDate() 
+    return date
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -188,9 +199,11 @@ class MainWindow(QMainWindow):
             raw_date = cols[0].strip()
             raw_payee = cols[1].strip().upper()
             raw_amount = cols[2].strip()
+
+            raw_date = parse_flexible_date(raw_date)
             
             print(f"Pasting: Date: {raw_date}, Payee: {raw_payee}, Amount: {raw_amount}")
-            newRowCol1 = QTableWidgetItem(raw_date)
+            newRowCol1 = QTableWidgetItem(raw_date.toString("MM/dd/yyyy"))
             newRowCol2 = QTableWidgetItem(raw_payee)
             newRowCol3 = QTableWidgetItem(raw_amount)
 
@@ -228,7 +241,7 @@ class MainWindow(QMainWindow):
             return
 
         filename = "cheque.pdf"
-        chequeDate = self.dateEdit.date().toString("MM/dd/yyyy")
+        chequeDate = parse_flexible_date(self.dateEdit.date().toString("MM/dd/yyyy"))
 
         create_cheque_pdf(filename, chequeDate, payee, str(self.formatted_amount), amount_words)
         #overlay_pdf_on_cheque_image(filename, "src/ui/check.jpg")
