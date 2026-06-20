@@ -30,18 +30,18 @@ jobs:
       - name: Build EXE
         run: |
           pyinstaller --noconfirm --onefile --windowed `
-            --name "ChequePrinter" `
+            --name "ChequeWriter" `
             --add-data "src/ui/cheque_writer.ui;src/ui" `
             --add-data "src/ui/check.jpeg;src/ui" `
             main.py
 
       - name: Zip the EXE
         run: |
-          Compress-Archive -Path dist/ChequePrinter.exe -DestinationPath dist/ChequePrinter.zip
+          Compress-Archive -Path dist/ChequeWriter.exe -DestinationPath dist/ChequeWriter.zip
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: ChequePrinter v1.0.${{ github.run_number }}
-          files: dist/ChequePrinter.exe
+          name: ChequeWriter v1.0.${{ github.run_number }}
+          files: dist/ChequeWriter.zip

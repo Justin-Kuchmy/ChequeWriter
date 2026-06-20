@@ -17,7 +17,8 @@ from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm, inch
 from reportlab.lib import colors        
-
+from pdf2image import convert_from_path
+from PIL import Image
 
 
 
@@ -60,25 +61,41 @@ def create_cheque_pdf(filename, date, payee, amount, amount_words):
     c.setStrokeColor(colors.black)
     c.rect(0, 0, width, height, fill=0, stroke=1)
 
-    date_digits = date.replace("/", "")
-    date_formatted = "  ".join(date_digits)
-    c.drawString(165 * mm, y(19), date_formatted)
+    date_digits = date.replace("/", " ")
+    date_formatted = "   ".join(date_digits)
+    c.drawString(160 * mm, y(19), date_formatted)
 
     # 2. Payee Name
-    c.drawString(30 * mm, y(27.5), payee.upper())
+    c.drawString(32 * mm, y(30.5), payee.upper())
 
 
     # 3. Amount Words
-    c.drawString(21.2 * mm, y(36.5), amount_words)
+    c.drawString(25.2 * mm, y(39.5), amount_words)
 
     # 4. Numeric Amount 
-    c.drawString(161.4 * mm, y(26.0), f"{amount}")
+    c.drawString(152.4 * mm, y(28.0), f"{amount}")
     
 
     c.save()
     #rotate_pdf(filename)
     print_cheque(filename)
 
+
+
+def overlay_pdf_on_cheque_image(pdf_path, cheque_image_path, output_path="overlay_check.png"):
+    
+    pdf_pages = convert_from_path(pdf_path, dpi=150)  # lower, since it gets resized anyway
+    pdf_image = pdf_pages[0].convert("RGBA")
+
+    cheque_image = Image.open(cheque_image_path).convert("RGBA")
+
+    pdf_image = pdf_image.resize(cheque_image.size)
+
+    alpha = pdf_image.split()[3].point(lambda p: p * 0.5)
+    pdf_image.putalpha(alpha)
+    
+    combined = Image.alpha_composite(cheque_image, pdf_image)
+    combined.save(output_path)
 
 def amount_to_words(amount: str) -> str:
     #value = float(amount.replace(',', ''))
@@ -101,8 +118,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Check Writer")
         loadUi(resource_path("src/ui/cheque_writer.ui", "src/ui/cheque_writer.ui"), self)
-        native_bundle_path = os.path.join("src", "ui", "check.jpeg")
-        image_path = resource_path("src/ui/check.jpeg", native_bundle_path)
+        native_bundle_path = os.path.join("src", "ui", "check.jpg")
+        image_path = resource_path("src/ui/check.jpg", native_bundle_path)
         clean_qt_path = image_path.replace('\\', '/')
 
         self.chequeFrame.setStyleSheet(f"""
@@ -213,5 +230,6 @@ class MainWindow(QMainWindow):
         chequeDate = self.dateEdit.date().toString("MM/dd/yyyy")
 
         create_cheque_pdf(filename, chequeDate, payee, str(self.formatted_amount), amount_words)
+        overlay_pdf_on_cheque_image(filename, "src/ui/check.jpg")
 
 
