@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install PyQt6 reportlab pypdf num2words pyinstaller
+          pip install PyQt6 reportlab pypdf num2words pyinstaller pdf2image pillow matplotlib
 
       - name: Build EXE
         run: |
@@ -34,7 +34,7 @@ jobs:
             --add-data "src/ui/cheque_writer.ui;src/ui" `
             --add-data "src/ui/check.jpeg;src/ui" `
             main.py
-            
+
       - name: Zip the EXE
         run: |
           Compress-Archive -Path dist/ChequePrinter.exe -DestinationPath dist/ChequePrinter.zip
