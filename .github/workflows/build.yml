@@ -34,6 +34,10 @@ jobs:
             --add-data "src/ui/cheque_writer.ui;src/ui" `
             --add-data "src/ui/check.jpeg;src/ui" `
             main.py
+            
+      - name: Zip the EXE
+        run: |
+          Compress-Archive -Path dist/ChequePrinter.exe -DestinationPath dist/ChequePrinter.zip
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
