@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 import os
+import traceback
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QHeaderView, QTableWidgetItem, QMessageBox
 from PyQt6.QtCore import Qt, QDate
@@ -18,12 +19,23 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm, inch
 from reportlab.lib import colors        
 
+def exception_hook(exctype, value, tb):
+    print("Exception type:", exctype)
+    print("Exception value:", value)
+    print("Traceback:")
+    traceback.print_tb(tb)
+    sys.exit(1)
 
+sys.excepthook = exception_hook
 
 
 def print_cheque(filename: str):
     if sys.platform == "win32":
-        os.startfile(filename, "print")
+        try:
+            os.startfile(filename, "print")
+        except Exception as e:
+            print(f"Error occurred while trying to print: {e}")
+            raise
     else:
         try:
             subprocess.run(["evince", "--preview", filename])
@@ -277,6 +289,5 @@ class MainWindow(QMainWindow):
         create_cheque_pdf(filename, chequeDate, payee, str(self.formatted_amount), amount_words)
         
         #overlay_pdf_on_cheque_image(filename, "src/ui/check.jpg")
-        input("Press Enter to Exit...")
 
 
