@@ -108,27 +108,27 @@ def create_cheque_pdf(filename, date, payee, amount, amount_words):
     
 
     c.save()
-    #rotate_pdf(filename)
+    rotate_pdf(filename)
     print_cheque(filename)
 
 
 #for debugging purposes, to overlay the generated PDF on the check image
-from pdf2image import convert_from_path
-from PIL import Image
-def overlay_pdf_on_cheque_image(pdf_path, cheque_image_path, output_path="overlay_check.png"):
+# from pdf2image import convert_from_path
+# from PIL import Image
+# def overlay_pdf_on_cheque_image(pdf_path, cheque_image_path, output_path="overlay_check.png"):
     
-    pdf_pages = convert_from_path(pdf_path, dpi=150) 
-    pdf_image = pdf_pages[0].convert("RGBA")
+#     pdf_pages = convert_from_path(pdf_path, dpi=150) 
+#     pdf_image = pdf_pages[0].convert("RGBA")
 
-    cheque_image = Image.open(cheque_image_path).convert("RGBA")
+#     cheque_image = Image.open(cheque_image_path).convert("RGBA")
 
-    pdf_image = pdf_image.resize(cheque_image.size)
+#     pdf_image = pdf_image.resize(cheque_image.size)
 
-    alpha = pdf_image.split()[3].point(lambda p: p * 0.5)
-    pdf_image.putalpha(alpha)
+#     alpha = pdf_image.split()[3].point(lambda p: p * 0.5)
+#     pdf_image.putalpha(alpha)
     
-    combined = Image.alpha_composite(cheque_image, pdf_image)
-    combined.save(output_path)
+#     combined = Image.alpha_composite(cheque_image, pdf_image)
+#     combined.save(output_path)
 
 def amount_to_words(amount: str) -> str:
     #value = float(amount.replace(',', ''))
@@ -277,7 +277,7 @@ class MainWindow(QMainWindow):
 
         create_cheque_pdf(filename, chequeDate, payee, str(self.formatted_amount), amount_words)
         
-        overlay_pdf_on_cheque_image(filename, "src/ui/check.jpg")
+        #overlay_pdf_on_cheque_image(filename, "src/ui/check.jpg")
         input("Press Enter to Exit...")
 
 
