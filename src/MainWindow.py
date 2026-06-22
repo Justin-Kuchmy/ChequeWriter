@@ -89,8 +89,8 @@ def create_cheque_pdf(filename, date, payee, amount, amount_words):
 
     c.setFont("Helvetica", 9)
 
-    c.setStrokeColor(colors.black)
-    c.rect(0, 0, width, height, fill=0, stroke=1)
+    #c.setStrokeColor(colors.black)
+    #c.rect(0, 0, width, height, fill=0, stroke=1)
 
     # Date  (was 160, 19)
     date_digits = date.toString("MM/dd/yyyy").replace("/", " ")
@@ -139,8 +139,7 @@ def amount_to_words(amount: str) -> str:
     centavos = round((value - pesos) * 100)
     
     words = num2words(pesos, lang='en').upper()
-    words = words.replace("AND ", "")  # Remove "AND" if it exists
-    words = words.replace(',', '')  # Remove "AND" if it exists
+    words = words.replace(" AND ", " ")  # Remove "AND" if it exists
     
     if centavos > 0:
         return f"{words} AND {centavos}/100 ONLY", formatted_amount
